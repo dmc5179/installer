@@ -102,6 +102,7 @@ func (o *ClusterUninstaller) validate() error {
 	}
 	switch r := o.Region; r {
 	case "us-iso-east-1":
+        case "us-isob-east-1":
 		return errors.Errorf("cannot destroy cluster in region %q", r)
 	}
 	return nil
