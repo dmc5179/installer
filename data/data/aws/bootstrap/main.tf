@@ -85,7 +85,9 @@ resource "aws_s3_object" "ignition" {
 }
 
 resource "aws_iam_instance_profile" "bootstrap" {
-  name = "${var.cluster_id}-bootstrap-profile"
+  count = var.aws_master_iam_role_name == "" ? 1 : 0
+
+  name = var.aws_master_iam_role_name != "" ? var.aws_master_iam_role_name : "${var.cluster_id}-bootstrap-profile"
 
   role = var.aws_master_iam_role_name != "" ? var.aws_master_iam_role_name : aws_iam_role.bootstrap[0].name
 }
@@ -152,7 +154,7 @@ EOF
 resource "aws_instance" "bootstrap" {
   ami = var.ami_id
 
-  iam_instance_profile        = aws_iam_instance_profile.bootstrap.name
+  iam_instance_profile        = var.aws_master_iam_role_name != "" ? var.aws_master_iam_role_name : "${var.cluster_id}-bootstrap-profile"
   instance_type               = var.aws_bootstrap_instance_type
   subnet_id                   = var.aws_publish_strategy == "External" ? var.public_subnet_ids[0] : var.private_subnet_ids[0]
   user_data                   = var.aws_bootstrap_stub_ignition

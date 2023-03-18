@@ -10,7 +10,9 @@ data "aws_partition" "current" {}
 data "aws_ebs_default_kms_key" "current" {}
 
 resource "aws_iam_instance_profile" "master" {
-  name = "${var.cluster_id}-master-profile"
+  count       = var.iam_role_name == "" ? 1 : 0
+
+  name = var.iam_role_name != "" ? var.iam_role_name : "${var.cluster_id}-master-profile"
 
   role = var.iam_role_name != "" ? var.iam_role_name : aws_iam_role.master_role[0].name
 }
@@ -130,7 +132,7 @@ resource "aws_instance" "master" {
   count = var.instance_count
   ami   = var.ec2_ami
 
-  iam_instance_profile = aws_iam_instance_profile.master.name
+  iam_instance_profile = var.iam_role_name != "" ? var.iam_role_name : "${var.cluster_id}-master-profile"
   instance_type        = var.instance_type
   user_data            = var.user_data_ign
 
