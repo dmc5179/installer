@@ -27,6 +27,7 @@ type machineProviderInput struct {
 	osImage        string
 	zone           string
 	role           string
+	iamRole        string
 	userDataSecret string
 	root           *aws.EC2RootVolume
 	imds           aws.EC2Metadata
@@ -61,6 +62,7 @@ func Machines(clusterID string, region string, subnets map[string]string, pool *
 			osImage:        mpool.AMIID,
 			zone:           zone,
 			role:           role,
+			iamRole:        mpool.IAMRole,
 			userDataSecret: userDataSecret,
 			root:           &mpool.EC2RootVolume,
 			imds:           mpool.EC2Metadata,
@@ -194,7 +196,7 @@ func provider(in *machineProviderInput) (*machineapi.AWSMachineProviderConfig, e
 		},
 		Tags: tags,
 		IAMInstanceProfile: &machineapi.AWSResourceReference{
-			ID: pointer.String(fmt.Sprintf("%s-%s-profile", in.clusterID, in.role)),
+			ID: pointer.String(in.iamRole),
 		},
 		UserDataSecret:    &corev1.LocalObjectReference{Name: in.userDataSecret},
 		CredentialsSecret: &corev1.LocalObjectReference{Name: "aws-cloud-credentials"},

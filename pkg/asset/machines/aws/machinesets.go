@@ -70,6 +70,7 @@ func MachineSets(clusterID string, region string, subnets icaws.Subnets, pool *t
 			osImage:        mpool.AMIID,
 			zone:           az,
 			role:           "worker",
+			iamRole:        mpool.IAMRole,
 			userDataSecret: userDataSecret,
 			root:           &mpool.EC2RootVolume,
 			imds:           mpool.EC2Metadata,
