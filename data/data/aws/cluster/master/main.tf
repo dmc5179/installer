@@ -133,6 +133,7 @@ resource "aws_instance" "master" {
   ami   = var.ec2_ami
 
   iam_instance_profile = var.iam_role_name != "" ? var.iam_role_name : "${var.cluster_id}-master-profile"
+ 
   instance_type        = var.instance_type
   user_data            = var.user_data_ign
 
@@ -176,7 +177,8 @@ resource "aws_instance" "master" {
   )
 
   depends_on = [
-    aws_network_interface.master
+    aws_network_interface.master,
+    aws_iam_instance_profile.master,
   ]
 }
 
