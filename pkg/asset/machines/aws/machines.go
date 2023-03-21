@@ -46,6 +46,7 @@ func Machines(clusterID string, region string, subnets map[string]string, pool *
 			&mpool.EC2RootVolume,
 			mpool.EC2Metadata,
 			mpool.AMIID,
+			mpool.IAMRole,
 			zone,
 			role,
 			userDataSecret,
@@ -154,7 +155,7 @@ func Machines(clusterID string, region string, subnets map[string]string, pool *
 	return machines, controlPlaneMachineSet, nil
 }
 
-func provider(clusterID string, region string, subnet string, instanceType string, root *aws.EC2RootVolume, imds aws.EC2Metadata, osImage string, zone, role, userDataSecret string, userTags map[string]string) (*machineapi.AWSMachineProviderConfig, error) {
+func provider(clusterID string, region string, subnet string, instanceType string, root *aws.EC2RootVolume, imds aws.EC2Metadata, osImage string, iamRole string, zone, role, userDataSecret string, userTags map[string]string) (*machineapi.AWSMachineProviderConfig, error) {
 	tags, err := tagsFromUserTags(clusterID, userTags)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create machineapi.TagSpecifications from UserTags")
@@ -177,7 +178,7 @@ func provider(clusterID string, region string, subnet string, instanceType strin
 			},
 		},
 		Tags:               tags,
-		IAMInstanceProfile: &machineapi.AWSResourceReference{ID: pointer.StringPtr(fmt.Sprintf("%s-%s-profile", clusterID, role))},
+		IAMInstanceProfile: &machineapi.AWSResourceReference{ID: pointer.StringPtr(iamRole)},
 		UserDataSecret:     &corev1.LocalObjectReference{Name: userDataSecret},
 		CredentialsSecret:  &corev1.LocalObjectReference{Name: "aws-cloud-credentials"},
 		Placement:          machineapi.Placement{Region: region, AvailabilityZone: zone},
