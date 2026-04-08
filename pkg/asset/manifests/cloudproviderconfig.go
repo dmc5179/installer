@@ -170,10 +170,10 @@ func (cpc *CloudProviderConfig) Generate(ctx context.Context, dependencies asset
 		}
 		cm.Data[cloudProviderConfigDataKey] = azureConfig
 
-		if installConfig.Azure.CloudName == azuretypes.StackCloud {
+		if installConfig.Azure.CloudName == azuretypes.StackCloud || installConfig.Azure.ARMEndpoint != "" {
 			b, err := json.Marshal(session.Environment)
 			if err != nil {
-				return errors.Wrap(err, "could not serialize Azure Stack endpoints")
+				return errors.Wrap(err, "could not serialize Azure endpoints")
 			}
 			cm.Data[cloudProviderEndpointsKey] = string(b)
 		}
