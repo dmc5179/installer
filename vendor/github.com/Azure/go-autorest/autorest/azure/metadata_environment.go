@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
@@ -94,6 +95,18 @@ type OverrideProperty struct {
 // This function is particularly useful in the Hybrid Cloud model, where one may define their own
 // endpoints.
 func EnvironmentFromURL(resourceManagerEndpoint string, properties ...OverrideProperty) (environment Environment, err error) {
+	println("ENV FROM URL!")
+	if fp := os.Getenv(EnvironmentFilepathName); fp != "" {
+		env, err := EnvironmentFromFile(fp)
+		if err != nil {
+			println("AZURE_ENVIRONMENT_FILEPATH set, failed to load environment file:", fp, "error:", err.Error())
+			return env, err
+		}
+
+		println("AZURE_ENVIRONMENT_FILEPATH set, using environment from file:", fp, "name:", env.Name)
+		return env, nil
+	}
+
 	var metadataEnvProperties environmentMetadataInfo
 
 	if resourceManagerEndpoint == "" {

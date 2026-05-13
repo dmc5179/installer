@@ -291,6 +291,19 @@ var (
 
 // EnvironmentFromName returns an Environment based on the common name specified.
 func EnvironmentFromName(name string) (Environment, error) {
+	// If a file path has been provided, always prefer loading the environment
+	// from that file regardless of the provided cloud name.
+	if fp := os.Getenv(EnvironmentFilepathName); fp != "" {
+		env, err := EnvironmentFromFile(fp)
+		if err != nil {
+			println("AZURE_ENVIRONMENT_FILEPATH set, failed to load environment file:", fp, "error:", err.Error())
+			return env, err
+		}
+
+		println("AZURE_ENVIRONMENT_FILEPATH set, using environment from file:", fp, "name:", env.Name)
+		return env, nil
+	}
+
 	// IMPORTANT
 	// As per @radhikagupta5:
 	// This is technical debt, fundamentally here because Kubernetes is not currently accepting

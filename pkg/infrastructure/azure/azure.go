@@ -2,6 +2,7 @@ package azure
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -121,6 +122,12 @@ func (p *Provider) InfraReady(ctx context.Context, in clusterapi.InfraReadyInput
 			Cloud: cloudConfiguration,
 		},
 	}
+	if cloudConfigurationBytes, err := json.Marshal(cloudConfiguration); err != nil {
+		logrus.WithError(err).Warn("failed to marshal arm client cloud configuration")
+	} else {
+		logrus.Infof("arm client cloud configuration: %s", string(cloudConfigurationBytes))
+	}
+
 	computeClientOpts := opts
 	if platform.CloudName == aztypes.StackCloud {
 		opts.APIVersion = stackAPIVersion

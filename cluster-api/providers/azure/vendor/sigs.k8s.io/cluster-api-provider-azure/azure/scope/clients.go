@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -86,10 +87,15 @@ func (c *AzureClients) setCredentialsWithProvider(ctx context.Context, subscript
 		return fmt.Errorf("credentials provider cannot have an empty value")
 	}
 
+	for _, kv := range os.Environ() {
+		println("env:", kv)
+	}
+
 	settings, err := c.getSettingsFromEnvironment(environmentName)
 	if err != nil {
 		return err
 	}
+	println("EnvironmentSettings:", fmt.Sprintf("%#v", settings))
 
 	if subscriptionID == "" {
 		subscriptionID = settings.GetSubscriptionID()
@@ -126,6 +132,7 @@ func (c *AzureClients) getSettingsFromEnvironment(environmentName string) (s aut
 		Values: map[string]string{},
 	}
 	s.Values["AZURE_ENVIRONMENT"] = environmentName
+	setValue(s, "AZURE_ENVIRONMENT_ENCODED")
 	setValue(s, "AZURE_SUBSCRIPTION_ID")
 	setValue(s, "AZURE_TENANT_ID")
 	setValue(s, "AZURE_AUXILIARY_TENANT_IDS")
@@ -136,7 +143,19 @@ func (c *AzureClients) getSettingsFromEnvironment(environmentName string) (s aut
 	setValue(s, "AZURE_USERNAME")
 	setValue(s, "AZURE_PASSWORD")
 	setValue(s, "AZURE_AD_RESOURCE")
-	if v := s.Values["AZURE_ENVIRONMENT"]; v == "" {
+	if encoded := strings.TrimSpace(s.Values["AZURE_ENVIRONMENT_ENCODED"]); encoded != "" {
+		decoded, decodeErr := base64.StdEncoding.DecodeString(encoded)
+		if decodeErr != nil {
+			return s, fmt.Errorf("failed to base64-decode AZURE_ENVIRONMENT_ENCODED: %w", decodeErr)
+		}
+
+		var decodedEnv azureautorest.Environment
+		if unmarshalErr := json.Unmarshal(decoded, &decodedEnv); unmarshalErr != nil {
+			return s, fmt.Errorf("failed to unmarshal AZURE_ENVIRONMENT_ENCODED as azure environment JSON: %w", unmarshalErr)
+		}
+		s.Environment = decodedEnv
+		azureautorest.SetEnvironment(decodedEnv.Name, decodedEnv)
+	} else if v := s.Values["AZURE_ENVIRONMENT"]; v == "" {
 		s.Environment = azureautorest.PublicCloud
 	} else {
 		s.Environment, err = azureautorest.EnvironmentFromName(v)

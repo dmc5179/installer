@@ -74,6 +74,8 @@ func GetSessionWithCredentials(cloudName azure.CloudEnvironment, armEndpoint str
 	var cloudEnv azureenv.Environment
 	var err error
 	switch {
+	case os.Getenv("AZURE_ENVIRONMENT_FILEPATH") != "":
+		cloudEnv, err = azureenv.EnvironmentFromName(string(cloudName))
 	case armEndpoint != "":
 		cloudEnv, err = azureenv.EnvironmentFromURL(armEndpoint)
 	default:
@@ -151,7 +153,15 @@ func GetCloudConfiguration(cloudName azure.CloudEnvironment, armEndpoint string)
 	case cloudName == azure.ChinaCloud:
 		cloudConfig = cloud.AzureChina
 	default:
-		cloudConfig = cloud.AzurePublic
+		cloudConfig = cloud.Configuration{
+			ActiveDirectoryAuthorityHost: cloudEnv.ActiveDirectoryEndpoint,
+			Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+				cloud.ResourceManager: {
+					Audience: cloudEnv.TokenAudience,
+					Endpoint: cloudEnv.ResourceManagerEndpoint,
+				},
+			},
+		}
 	}
 
 	return &cloudConfig, nil
