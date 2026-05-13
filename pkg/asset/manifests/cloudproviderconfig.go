@@ -152,7 +152,8 @@ func (cpc *CloudProviderConfig) Generate(ctx context.Context, dependencies asset
 			}
 		}
 		azureConfig, err := azure.CloudProviderConfig{
-			CloudName:                installConfig.Config.Azure.CloudName,
+			//CloudName:                installConfig.Config.Azure.CloudName,
+			CloudName:				  azuretypes.StackCloud,
 			ResourceGroupName:        installConfig.Config.Azure.ClusterResourceGroupName(clusterID.InfraID),
 			GroupLocation:            installConfig.Config.Azure.Region,
 			ResourcePrefix:           clusterID.InfraID,
@@ -170,6 +171,7 @@ func (cpc *CloudProviderConfig) Generate(ctx context.Context, dependencies asset
 		}
 		cm.Data[cloudProviderConfigDataKey] = azureConfig
 
+		//DMC: Unsure if this will work without hard coded cloud name based on in region testing.
 		if installConfig.Azure.CloudName == azuretypes.StackCloud || installConfig.Azure.ARMEndpoint != "" {
 			b, err := json.Marshal(session.Environment)
 			if err != nil {

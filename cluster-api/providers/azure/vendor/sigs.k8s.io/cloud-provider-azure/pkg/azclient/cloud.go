@@ -152,6 +152,17 @@ func GetAzureCloudConfigAndEnvConfig(armConfig *ARMClientConfig) (cloud.Configur
 		cloudName = armConfig.Cloud
 	}
 	config := utils.AzureCloudConfigFromName(cloudName)
+	if fp := os.Getenv("AZURE_ENVIRONMENT_FILEPATH"); fp != "" {
+		env, err := EnvironmentFromFile(fp)
+		if err != nil {
+			println("AZURE_ENVIRONMENT_FILEPATH CPA set, failed to load environment file:", fp, "error:", err.Error())
+			return *config, nil, fmt.Errorf("Error parsing env file")
+		}
+
+		println("AZURE_ENVIRONMENT_FILEPATH CPA set, using environment from file:", fp, "name:", env.Name)
+		return *config, &env, nil
+	}
+
 	if armConfig == nil {
 		return *config, nil, nil
 	}
@@ -375,9 +386,33 @@ var (
 )
 
 func EnvironmentFromName(cloudName string) *Environment {
+	if fp := os.Getenv("AZURE_ENVIRONMENT_FILEPATH"); fp != "" {
+		env, err := EnvironmentFromFile(fp)
+		if err != nil {
+			println("AZURE_ENVIRONMENT_FILEPATH CPA set, failed to load environment file:", fp, "error:", err.Error())
+			return nil
+		}
+
+		println("AZURE_ENVIRONMENT_FILEPATH CPA set, using environment from file:", fp, "name:", env.Name)
+		return &env
+	}
+
+	println("AZURE_ENVIRONMENT_FILEPATH CPA IS NOT SET")
+
 	cloudName = strings.ToUpper(strings.TrimSpace(cloudName))
 	if cloudConfig, ok := EnvironmentMapping[cloudName]; ok {
 		return cloudConfig
 	}
 	return PublicCloud
+}
+
+func EnvironmentFromFile(location string) (unmarshaled Environment, err error) {
+	fileContents, err := os.ReadFile(location)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(fileContents, &unmarshaled)
+
+	return
 }

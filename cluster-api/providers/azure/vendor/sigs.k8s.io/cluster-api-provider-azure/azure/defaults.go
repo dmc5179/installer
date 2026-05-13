@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/tracing/azotel"
+	azureautorest "github.com/Azure/go-autorest/autorest/azure"
 	"go.opentelemetry.io/otel"
 
 	"sigs.k8s.io/cluster-api-provider-azure/util/tele"
@@ -370,7 +371,31 @@ func ARMClientOptions(azureEnvironment string, extraPolicies ...policy.Policy) (
 	case "":
 		// No cloud name provided, so leave at defaults.
 	default:
-		return nil, fmt.Errorf("invalid cloud name %q", azureEnvironment)
+		// Try to interpret the cloud name as a go-autorest environment.
+		//
+		// This enables custom clouds registered via azureautorest.SetEnvironment
+		// (for example when AZURE_ENVIRONMENT_ENCODED is used).
+		autorestEnv, err := azureautorest.EnvironmentFromName(azureEnvironment)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cloud name %q", azureEnvironment)
+		}
+
+		armAudience := autorestEnv.TokenAudience
+		if armAudience == "" {
+			// For some custom clouds TokenAudience might be omitted; fall back to
+			// the ResourceManager endpoint to preserve the previous behavior.
+			armAudience = autorestEnv.ResourceManagerEndpoint
+		}
+
+		opts.Cloud = cloud.Configuration{
+			ActiveDirectoryAuthorityHost: autorestEnv.ActiveDirectoryEndpoint,
+			Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+				cloud.ResourceManager: {
+					Endpoint: autorestEnv.ResourceManagerEndpoint,
+					Audience: armAudience,
+				},
+			},
+		}
 	}
 	opts.PerCallPolicies = []policy.Policy{
 		correlationIDPolicy{},

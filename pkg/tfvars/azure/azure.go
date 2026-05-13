@@ -11,6 +11,8 @@ import (
 	machineapi "github.com/openshift/api/machine/v1beta1"
 	"github.com/openshift/installer/pkg/types"
 	"github.com/openshift/installer/pkg/types/azure"
+
+	autorestazure "github.com/Azure/go-autorest/autorest/azure"
 )
 
 // Auth is the collection of credentials that will be used by terrform.
@@ -117,6 +119,20 @@ func TFVars(sources TFVarsSources) ([]byte, error) {
 		return nil, errors.Wrap(err, "could not determine Azure environment to use for Terraform")
 	}
 
+	// For custom/hybrid clouds, the terraform environment string can be empty.
+	// In that case, fall back to autorest's Environment resolution (which will also
+	// honor AZURE_ENVIRONMENT_FILEPATH when set), and use its Name and ARM endpoint.
+	if environment == "" {
+		env, err := autorestazure.EnvironmentFromName(string(sources.CloudName))
+		if err != nil {
+			return nil, errors.Wrap(err, "could not load Azure environment from autorest")
+		}
+		environment = env.Name
+		sources.ARMEndpoint = env.ResourceManagerEndpoint
+	}
+
+	println("Using Azure environment:", environment, "ARM endpoint:", sources.ARMEndpoint)
+
 	masterEncryptionAtHostEnabled := masterConfig.SecurityProfile != nil &&
 		(*masterConfig.SecurityProfile).EncryptionAtHost != nil &&
 		*masterConfig.SecurityProfile.EncryptionAtHost
@@ -212,7 +228,13 @@ func TFVars(sources TFVarsSources) ([]byte, error) {
 		ResourceGroupMetadataTags:               metadataTags,
 	}
 
-	return json.MarshalIndent(cfg, "", "  ")
+	b, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	println(string(b))
+	return b, nil
 }
 
 // environment returns the Azure environment to pass to Terraform
@@ -230,7 +252,8 @@ func environment(cloudName azure.CloudEnvironment) (string, error) {
 		// unused since stack uses its own provider
 		return "", nil
 	default:
-		return "", errors.Errorf("unsupported cloud name %q", cloudName)
+		return "", nil
+		//return "", errors.Errorf("unsupported cloud name %q", cloudName)
 	}
 }
 

@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -243,6 +244,25 @@ func TestValidatePlatform(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidatePlatform_CustomCloudNameFromEnvironmentFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	envFilePath := tmpDir + string(os.PathSeparator) + "azure-environment.json"
+
+	// autorest/azure.EnvironmentFromFile only needs a valid JSON document; for this
+	// validation test we only care about the top-level "name" field.
+	err := os.WriteFile(envFilePath, []byte(`{"name":"MyCustomCloud"}`), 0600)
+	assert.NoError(t, err)
+
+	t.Setenv("AZURE_ENVIRONMENT_FILEPATH", envFilePath)
+
+	p := validPlatform()
+	p.CloudName = azure.CloudEnvironment("MyCustomCloud")
+
+	ic := types.InstallConfig{}
+	err = ValidatePlatform(p, types.ExternalPublishingStrategy, field.NewPath("test-path"), &ic).ToAggregate()
+	assert.NoError(t, err)
 }
 
 func TestValidateUserTags(t *testing.T) {

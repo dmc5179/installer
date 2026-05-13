@@ -1,11 +1,13 @@
 package validation
 
 import (
+	"os"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 
+	autorestazure "github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	capz "sigs.k8s.io/cluster-api-provider-azure/api/v1beta1"
 
@@ -21,15 +23,38 @@ var (
 		azure.GermanCloud:       true,
 		azure.StackCloud:        true,
 	}
-
-	validCloudNameValues = func() []string {
-		v := make([]string, 0, len(validCloudNames))
-		for n := range validCloudNames {
-			v = append(v, string(n))
-		}
-		return v
-	}()
 )
+
+func supportedCloudNames() map[azure.CloudEnvironment]bool {
+	// Copy base supported clouds.
+	supported := make(map[azure.CloudEnvironment]bool, len(validCloudNames)+1)
+	for cloud := range validCloudNames {
+		supported[cloud] = true
+	}
+
+	// If AZURE_ENVIRONMENT_FILEPATH points to an autorest Environment JSON file,
+	// allow using its Name as a cloudName.
+	if fp := os.Getenv(autorestazure.EnvironmentFilepathName); fp != "" {
+		env, err := autorestazure.EnvironmentFromFile(fp)
+		if err == nil && env.Name != "" {
+			// Ensure other components resolving environments by name can find this custom environment.
+			autorestazure.SetEnvironment(env.Name, env)
+			supported[azure.CloudEnvironment(env.Name)] = true
+		}
+	}
+
+	return supported
+}
+
+func supportedCloudNameValues() []string {
+	supported := supportedCloudNames()
+	v := make([]string, 0, len(supported))
+	for n := range supported {
+		v = append(v, string(n))
+	}
+	sort.Strings(v)
+	return v
+}
 
 var (
 	// tagKeyRegex is for verifying that the tag key contains only allowed characters.
@@ -108,8 +133,8 @@ func ValidatePlatform(p *azure.Platform, publish types.PublishingStrategy, fldPa
 			allErrs = append(allErrs, field.Required(fldPath.Child("networkResourceGroupName"), "must provide a network resource group when supplying subnets"))
 		}
 	}
-	if !validCloudNames[p.CloudName] {
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("cloudName"), p.CloudName, validCloudNameValues))
+	if !supportedCloudNames()[p.CloudName] {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("cloudName"), p.CloudName, supportedCloudNameValues()))
 	}
 
 	if _, ok := validOutboundTypes[p.OutboundType]; !ok {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -213,12 +214,29 @@ func (c *system) Run(ctx context.Context) error { //nolint:gocyclo
 		if cloudName == "" {
 			cloudName = azure.PublicCloud
 		}
+
+		// If an Azure environment file path is provided, this install should behave as Azure Stack.
+		// Also, propagate the environment file path to the infrastructure controllers (we do not
+		// inherit the parent process environment in runController).
+		envFP := ""
 		session, err := azic.GetSession(cloudName, metadata.Azure.ARMEndpoint)
 		if err != nil {
 			return fmt.Errorf("unable to retrieve azure session: %w", err)
 		}
 		azProvider := Azure
-		var envFP string
+		// envFP is the environment file path passed to CAPZ and ASO.
+		// It may come from the parent process env var or be written to componentDir for Azure Stack.
+		myB, err := json.Marshal(session.Environment)
+		if err != nil {
+			return errors.Wrap(err, "could not serialize Azure Stack endpoints")
+		}
+		azureEnvironmentEncoded := ""
+		println("session.Environment: ", string(myB))
+		origEnvFP := os.Getenv("AZURE_ENVIRONMENT_FILEPATH")
+		if origEnvFP != "" {
+			azureEnvironmentEncoded = base64.StdEncoding.EncodeToString(myB)
+		}
+
 		if cloudName == azure.StackCloud {
 			// Set provider so that the Azure Stack (forked) controller and CRDs are used.
 			azProvider = AzureStack
@@ -269,6 +287,7 @@ func (c *system) Run(ctx context.Context) error { //nolint:gocyclo
 				},
 				map[string]string{
 					"AZURE_ENVIRONMENT_FILEPATH": envFP,
+					"AZURE_ENVIRONMENT_ENCODED":  azureEnvironmentEncoded,
 				},
 			),
 			c.getInfrastructureController(
@@ -292,6 +311,7 @@ func (c *system) Run(ctx context.Context) error { //nolint:gocyclo
 					"AZURE_RESOURCE_MANAGER_ENDPOINT":   session.Environment.ResourceManagerEndpoint,
 					"AZURE_RESOURCE_MANAGER_AUDIENCE":   session.Environment.TokenAudience,
 					"AZURE_ENVIRONMENT_FILEPATH":        envFP,
+					"AZURE_ENVIRONMENT_ENCODED":         azureEnvironmentEncoded,
 				},
 			),
 		)
