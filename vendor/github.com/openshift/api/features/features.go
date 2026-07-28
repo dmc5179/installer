@@ -753,6 +753,20 @@ var (
 					enhancementPR("https://github.com/openshift/enhancements/pull/1670").
 					mustRegister()
 
+	FeatureShortCertRotationOneDay = newFeatureGate("ShortCertRotationOneDay").
+						reportProblemsToJiraComponent("kube-apiserver").
+						contactPerson("vrutkovs").
+						productScope(ocpSpecific).
+						enhancementPR("https://github.com/openshift/enhancements/pull/1670").
+						mustRegister()
+
+	FeatureShortCertRotationOneYear = newFeatureGate("ShortCertRotationOneYear").
+						reportProblemsToJiraComponent("kube-apiserver").
+						contactPerson("vrutkovs").
+						productScope(ocpSpecific).
+						enhancementPR("https://github.com/openshift/enhancements/pull/1670").
+						mustRegister()
+
 	FeatureGateVSphereConfigurableMaxAllowedBlockVolumesPerNode = newFeatureGate("VSphereConfigurableMaxAllowedBlockVolumesPerNode").
 									reportProblemsToJiraComponent("Storage / Kubernetes External Components").
 									contactPerson("rbednar").

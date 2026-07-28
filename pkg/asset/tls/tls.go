@@ -302,17 +302,27 @@ func hasShortCertRotationEnabled(installConfig *installconfig.InstallConfig) boo
 	return fgs.Enabled(features.FeatureShortCertRotation)
 }
 
-// ValidityOneDay sets the validity of a cert to 24 hours - or 1 hour when ShortRotationEnabled featuregate is enabled.
+func hasShortCertRotationOneDayEnabled(installConfig *installconfig.InstallConfig) bool {
+	fgs := installConfig.Config.EnabledFeatureGates()
+	return fgs.Enabled(features.FeatureShortCertRotationOneDay)
+}
+
+func hasShortCertRotationOneYearEnabled(installConfig *installconfig.InstallConfig) bool {
+	fgs := installConfig.Config.EnabledFeatureGates()
+	return fgs.Enabled(features.FeatureShortCertRotationOneYear)
+}
+
+// ValidityOneDay sets the validity of a cert to 24 hours - or 2 hours when ShortCertRotation or ShortCertRotationOneDay featuregate is enabled.
 func ValidityOneDay(installConfig *installconfig.InstallConfig) time.Duration {
-	if hasShortCertRotationEnabled(installConfig) {
+	if hasShortCertRotationEnabled(installConfig) || hasShortCertRotationOneDayEnabled(installConfig) {
 		return time.Hour * 2
 	}
 	return time.Hour * 24
 }
 
-// ValidityOneYear sets the validity of a cert to 1 year - or two hours when ShortRotationEnabled featuregate is enabled.
+// ValidityOneYear sets the validity of a cert to 1 year - or 4 hours when ShortCertRotation or ShortCertRotationOneYear featuregate is enabled.
 func ValidityOneYear(installConfig *installconfig.InstallConfig) time.Duration {
-	if hasShortCertRotationEnabled(installConfig) {
+	if hasShortCertRotationEnabled(installConfig) || hasShortCertRotationOneYearEnabled(installConfig) {
 		return time.Hour * 4
 	}
 	return time.Hour * 24 * 365
